@@ -9,10 +9,13 @@ const { OpenAI } = require('openai');
 
 const app = express();
 const port = 3000;
-
+if (process.env.GOOGLE_KEY_BASE64) {
+  const decoded = Buffer.from(process.env.GOOGLE_KEY_BASE64, 'base64').toString('utf8');
+  fs.writeFileSync(path.join(__dirname, process.env.GOOGLE_KEY_BASE64), decoded);
+}
 // Setup Google Cloud clients
-const storage = new Storage({ keyFilename: 'thekey.json' });
-const videoClient = new VideoIntelligenceServiceClient({ keyFilename: 'thekey.json' });
+const storage = new Storage({ keyFilename: process.env.GOOGLE_KEY_BASE64 });
+const videoClient = new VideoIntelligenceServiceClient({ keyFilename: process.env.GOOGLE_KEY_BASE64 });
 
 // OpenAI setup
 const openai = new OpenAI({
