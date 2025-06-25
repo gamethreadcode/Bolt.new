@@ -25,18 +25,24 @@ let storage, videoClient;
 try {
 const rawBase64 = process.env.GOOGLE_KEY_BASE64
   .trim()
-  .replace(/^['"]+|['"]+$/g, '')         // Remove single/double quotes
-  .replace(/\\n/g, '\n')                 // Replace escaped newlines
-  .replace(/\r/g, '');                   // Remove carriage returns (in case of Windows formatting)
-  const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
-  const parsed = JSON.parse(decoded);
-  if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
-  fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
+  .replace(/^['"]+|['"]+$/g, ''); // Strip outer quotes
 
-  storage = new Storage({ keyFilename: keyPath });
-  videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
+const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
+const parsed = JSON.parse(decoded);
 
-  console.log('✅ Google Cloud clients initialized');
+// 🔐 Fix newline characters in private_key
+if (parsed.private_key) {
+  parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+}
+
+// 💾 Save fixed keyfile
+fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
+
+// ✅ Initialize Google Cloud clients
+storage = new Storage({ keyFilename: keyPath });
+videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
+
+console.log('✅ Google Cloud clients initialized:', parsed.client_email);
 } catch (err) {
   console.error('❌ GOOGLE_KEY_BASE64 decode failed:', err.message);
   process.exit(1);
