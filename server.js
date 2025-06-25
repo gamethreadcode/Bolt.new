@@ -14,8 +14,10 @@ const keyPath = path.join(__dirname, 'keyfile.json');
 
 if (process.env.GOOGLE_KEY_BASE64) {
   const decoded = Buffer.from(process.env.GOOGLE_KEY_BASE64, 'base64').toString('utf8');
-  fs.writeFileSync(keyPath, decoded);
-} else {
+//  Replace literal `\n` with actual newlines
+const fixedKey = decoded.replace(/\\n/g, '\n');
+
+fs.writeFileSync(keyPath, fixedKey);} else {
   console.error('❌ GOOGLE_KEY_BASE64 not found in .env');
   process.exit(1);
 }
