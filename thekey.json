@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "basketball-analysis-project",
+  "private_key_id": "32e0c91eb5de1e3fe392b3d82b1668aab1519700",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDKO+cIcOi1eRq4\nfAdiRyNPUxjE0wuD1RMA5jIlh/04b2nJUbkweZLnwFYEt3ImgLE9/Nrbsx04z8+k\ncZ/WWbRrSzDyUiXyfHHz/gF06iY8oMP/1wgVLIl9Nq5PSJvAHcKMJPIcjGU6fs+p\noNB8e/QDwSc5xwiQ/FLS5zlRQb1DP5CCtFoSN4ZrJZ5PA8erQ2KsESU4dPlj91/z\nra/oaaoN/tHeQEEqMqSEN3+TSEHN3hXYm+A17V4B71Irf9atCGxXaO/iL90v+dGc\nR6cVuoWA7jP/f6jVAF+Q0eu+XhCsSrQXp8n0+umswEwLCO+1StLHf0nT0XTOHbP3\nOwtqTxGDAgMBAAECggEADJdzOJbTHm12aPMsAIX+YFODsMmVJ3WuU7mBeM3BSfDB\n7Ot+NNL0/yH+GRgU7unHX10tgU1jLeTegFYkxhNaxO1vFD9iJnlyHOd9Trq/e7nk\nyjqoway+uMGdU8lpDSqtMM2iF330VZKMunqNUJrlJBC0MQg/88sKGyCTdIg70QJ5\nNPaATxfXuyn5wHS9j1K63MSKJnl8W3698d5f+n3d0v077QiF8NLMcAwH9+892oaA\nZdLR4FF+A/cqwwiuq+6Y3n8JCPYeyEw9RdGH+fbarZo/lNSa0kYFn5x9+z2b1tD0\niuqpW/8G/cmhSvsxWx2PEFnnNmgQbn4b/p4FEh4UQQKBgQD6ol2paKGyVCIBdeVE\nL2eVD6/jzpIYzV5YDgA/x8DbfgV1e+NkgW0Hbs5vnQ69up7EcHGE+SN+SsIlpW8A\n0i0kgcvORULRW5MvA62Iqstghf/xP9lrxqnIKLIQMHTyouHU7GPRZ9UkVtrpjKyz\nIB2yz3PF9dV/FmAdlh+5wlNUwwKBgQDOkEXL8oILvNDtF/OBkPuheakwaTAGAyib\n81WNby9b2ylEJpvKCS8vLWjPeEwph0IFQTEel9QsWhgUc4fFyXYhBoYKvtNnFh3z\nDZ6eDqh2OlTbMhIbH2mjgbbMS2c+8n3120s7KyioVMJXQbGx+fghwzjeyRtOrQKJ\nYOLf96aEQQKBgB75H8AGySzDjuxFSI7zmMZoCOGLLqzX/Fe/azJ2mhPF8CDDradH\nA1VO0T4j16WEwYgfKTg4nbVGwdVrK1ubna6MR8Z28rnyqi6+MpzYFogYJzgGHvVd\nuK+er9qmUl2F2Yi5qeBAB6wU+7qvAsykJGdrkbAeIEMzXa9qVQNcy3WHAoGAWE8R\np9lrg30bjOE6d1/2U9hhXpL5tvhOui1Tm/22r3yIrdwbqko24+Jz9o6lcPOkY/60\n8zFRwgxaUxP5LbOtTv0s/RcL5fxsnWZrM4Nsve6+LF/BodrSHNbtwXVTFHQzKZKx\nHQCchyqFUyyAvWfyjuyZOZWcmQwaE4VaOQn1JIECgYAh9g/DVMjUU8Evjz6XoqUY\n1xY+hUXnrOfhY9tbC29VUI1OUfIOnnmAE2RDbOHwtYK+TBDQMzIjvY+oj2YnLHlF\nBV2qhdwHZ/JE6iuJU2pI3v6Lz7APdA7SMLng4nUc3sRZ4Log/Jg6l1Sch9mDjinb\ncJeeToN/1uKRtcffVddrtA==\n-----END PRIVATE KEY-----\n",
+  "client_email": "video-analysis-service@basketball-analysis-project.iam.gserviceaccount.com",
+  "client_id": "113751043044058647861",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/video-analysis-service%40basketball-analysis-project.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
