@@ -18,24 +18,32 @@ if (!process.env.GOOGLE_KEY_BASE64) {
 }
 
 try {
-  const decoded = Buffer.from(process.env.GOOGLE_KEY_BASE64, 'base64').toString('utf8');
+  // ✂️ Remove Railway's auto-added quotes if present
+  const rawBase64 = process.env.GOOGLE_KEY_BASE64.trim().replace(/^"|"$/g, '');
 
-  // 🧼 Ensure valid JSON by fixing \n
-  const fixedKey = decoded.replace(/\\n/g, '\n');
+  // 🔓 Decode from base64
+  const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
 
-  // ✅ Validate JSON to catch malformed keys
-  const parsed = JSON.parse(fixedKey);
+  // 🛠 Fix newline characters in private_key
+  const parsed = JSON.parse(decoded);
+  if (parsed.private_key) {
+    parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+  }
 
-  // 💾 Save to keyfile.json
+  // 💾 Save as keyfile.json
   fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
 
   // ✅ Initialize Google Cloud clients
   const storage = new Storage({ keyFilename: keyPath });
   const videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
 
-  console.log('✅ Google Cloud clients initialized');
+  console.log('✅ Google Cloud clients initialized successfully');
+  
+  // Export clients if needed
+  module.exports = { storage, videoClient };
+
 } catch (err) {
-  console.error('❌ Failed to parse GOOGLE_KEY_BASE64:', err.message);
+  console.error('❌ Failed to decode GOOGLE_KEY_BASE64:', err.message);
   process.exit(1);
 }
 // OpenAI setup
