@@ -34,7 +34,6 @@ try {
   fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
 
   // ✅ Initialize Google Cloud clients
-  const storage = new Storage({ keyFilename: keyPath });
   const videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
 
   console.log('✅ Google Cloud clients initialized successfully');
@@ -46,6 +45,8 @@ try {
   console.error('❌ Failed to decode GOOGLE_KEY_BASE64:', err.message);
   process.exit(1);
 }
+  const storage = new Storage({ keyFilename: keyPath });
+
 // OpenAI setup
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
