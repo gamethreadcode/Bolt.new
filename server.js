@@ -23,7 +23,11 @@ if (!process.env.GOOGLE_KEY_BASE64) {
 let storage, videoClient;
 
 try {
-  const rawBase64 = process.env.GOOGLE_KEY_BASE64.trim().replace(/^"|"$/g, '');
+const rawBase64 = process.env.GOOGLE_KEY_BASE64
+  .trim()
+  .replace(/^['"]+|['"]+$/g, '')         // Remove single/double quotes
+  .replace(/\\n/g, '\n')                 // Replace escaped newlines
+  .replace(/\r/g, '');                   // Remove carriage returns (in case of Windows formatting)
   const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
   const parsed = JSON.parse(decoded);
   if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
