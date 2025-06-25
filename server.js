@@ -11,8 +11,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 const keyPath = path.join(__dirname, 'keyfile.json');
 
-let storage;
-let videoClient;
+// Health Check
+app.get('/health', (req, res) => res.send('✅ Server is up'));
 
 // === Decode base64 service account key ===
 if (!process.env.GOOGLE_KEY_BASE64) {
@@ -20,85 +20,75 @@ if (!process.env.GOOGLE_KEY_BASE64) {
   process.exit(1);
 }
 
+let storage, videoClient;
+
 try {
   const rawBase64 = process.env.GOOGLE_KEY_BASE64.trim().replace(/^"|"$/g, '');
   const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
   const parsed = JSON.parse(decoded);
-  if (parsed.private_key) {
-    parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
-  }
+  if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
   fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
+
   storage = new Storage({ keyFilename: keyPath });
   videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
+
   console.log('✅ Google Cloud clients initialized');
 } catch (err) {
-  console.error('❌ Failed to decode GOOGLE_KEY_BASE64:', err.message);
+  console.error('❌ GOOGLE_KEY_BASE64 decode failed:', err.message);
   process.exit(1);
 }
 
+// OpenAI setup
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Multer setup for 5 GB limit
 const upload = multer({
   dest: 'uploads/',
-  limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB limit
+  limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5 GB
 });
-
 let lastUploadedFile = '';
 
-// Upload endpoint
+// Upload Endpoint
 app.post('/upload-video', upload.single('video'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).send('No file uploaded.');
+    if (!req.file) return res.status(400).send('❌ No file uploaded');
 
     lastUploadedFile = req.file.filename;
     const localFilePath = path.join(__dirname, 'uploads', lastUploadedFile);
     const bucket = storage.bucket('basketball-demo-videos');
 
-    await bucket.upload(localFilePath, {
-      destination: lastUploadedFile,
-    });
+    await bucket.upload(localFilePath, { destination: lastUploadedFile });
 
-    console.log(`${lastUploadedFile} uploaded to Google Cloud Storage`);
+    console.log(`✅ Uploaded: ${lastUploadedFile}`);
     res.send('✅ Video uploaded successfully.');
   } catch (err) {
-    console.error('Upload Error:', err);
-    res.status(500).send('Upload failed');
+    console.error('❌ Upload error:', err);
+    res.status(500).send('❌ Upload failed');
   }
 });
 
-// Analyze video
+// Analyze Video
 app.get('/analyze-video', async (req, res) => {
   try {
-    if (!lastUploadedFile) {
-      return res.status(400).send('❌ No video uploaded yet.');
-    }
+    if (!lastUploadedFile) return res.status(400).send('❌ No video uploaded.');
 
     const gcsUri = `gs://basketball-demo-videos/${lastUploadedFile}`;
-    console.log('🔍 Analyzing:', gcsUri);
-
     const [operation] = await videoClient.annotateVideo({
       inputUri: gcsUri,
-      features: [
-        'LABEL_DETECTION',
-        'SHOT_CHANGE_DETECTION',
-        'TEXT_DETECTION',
-        'OBJECT_TRACKING',
-      ],
+      features: ['LABEL_DETECTION', 'SHOT_CHANGE_DETECTION', 'TEXT_DETECTION', 'OBJECT_TRACKING'],
     });
 
-    console.log('🕒 Waiting for analysis...');
+    console.log('🕒 Analyzing...');
     const [result] = await operation.promise({ timeout: 600000 });
-
     const annotations = result.annotationResults[0];
     fs.writeFileSync('metadata.json', JSON.stringify(annotations, null, 2));
-    console.log('✅ Metadata saved to metadata.json');
 
-    res.send('✅ Video analysis complete and metadata saved.');
+    res.send('✅ Video analysis complete.');
   } catch (err) {
-    console.error('❌ Error during video analysis:', err.message);
-    res.status(500).send('❌ Failed to analyze video: ' + err.message);
+    console.error('❌ Analysis error:', err);
+    res.status(500).send('❌ Analysis failed: ' + err.message);
   }
 });
 
@@ -107,15 +97,13 @@ app.get('/chat', async (req, res) => {
   try {
     const raw = fs.readFileSync('metadata.json', 'utf-8');
     const metadata = JSON.parse(raw);
-
     const labels = metadata.segmentLabelAnnotations
       ?.slice(0, 5)
       .map(l => `${l.entity.description}: ${l.segments.length} segments`)
       .join('\n');
 
     const question = req.query.q || 'Summarize key plays from the video.';
-
-    const prompt = `\nBased on this video metadata:\n${labels}\n\nQuestion: ${question}\n    `;
+    const prompt = `Based on this video metadata:\n${labels}\n\nQuestion: ${question}`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -127,8 +115,8 @@ app.get('/chat', async (req, res) => {
 
     res.send(response.choices[0].message.content);
   } catch (err) {
-    console.error('Chat Error:', err);
-    res.status(500).send('OpenAI chat failed: ' + err.message);
+    console.error('❌ Chat error:', err.message);
+    res.status(500).send('OpenAI failed: ' + err.message);
   }
 });
 
