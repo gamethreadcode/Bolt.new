@@ -8,8 +8,12 @@ const { VideoIntelligenceServiceClient } = require('@google-cloud/video-intellig
 const { OpenAI } = require('openai');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const keyPath = path.join(__dirname, 'keyfile.json');
+
+// Declare Google Cloud clients
+let storage;
+let videoClient;
 
 // === Decode base64 service account key ===
 if (!process.env.GOOGLE_KEY_BASE64) {
@@ -18,34 +22,28 @@ if (!process.env.GOOGLE_KEY_BASE64) {
 }
 
 try {
-  // ✂️ Remove Railway's auto-added quotes if present
+  // 🧼 Clean up any extra quotes (Railway issue)
   const rawBase64 = process.env.GOOGLE_KEY_BASE64.trim().replace(/^"|"$/g, '');
-
-  // 🔓 Decode from base64
   const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
 
-  // 🛠 Fix newline characters in private_key
+  // 📦 Parse JSON and fix \n in private key
   const parsed = JSON.parse(decoded);
   if (parsed.private_key) {
     parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
   }
 
-  // 💾 Save as keyfile.json
+  // 💾 Write to keyfile.json
   fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
 
   // ✅ Initialize Google Cloud clients
-  const videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
+  storage = new Storage({ keyFilename: keyPath });
+  videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
 
-  console.log('✅ Google Cloud clients initialized successfully');
-  
-  // Export clients if needed
-  module.exports = { storage, videoClient };
-
+  console.log('✅ Google Cloud clients initialized');
 } catch (err) {
   console.error('❌ Failed to decode GOOGLE_KEY_BASE64:', err.message);
   process.exit(1);
 }
-  const storage = new Storage({ keyFilename: keyPath });
 
 // OpenAI setup
 const openai = new OpenAI({
@@ -77,6 +75,7 @@ app.post('/upload-video', upload.single('video'), async (req, res) => {
   }
 });
 
+// Analyze video
 app.get('/analyze-video', async (req, res) => {
   try {
     if (!lastUploadedFile) {
@@ -86,7 +85,6 @@ app.get('/analyze-video', async (req, res) => {
     const gcsUri = `gs://basketball-demo-videos/${lastUploadedFile}`;
     console.log('🔍 Analyzing:', gcsUri);
 
-    // Step 1: Call Google Video Intelligence API
     const [operation] = await videoClient.annotateVideo({
       inputUri: gcsUri,
       features: [
@@ -97,12 +95,9 @@ app.get('/analyze-video', async (req, res) => {
       ],
     });
 
-    console.log("🕒 Waiting for analysis to complete... (This may take up to 10 mins)");
+    console.log('🕒 Waiting for analysis...');
+    const [result] = await operation.promise({ timeout: 600000 }); // 10 minutes
 
-    // Step 2: Wait for the result with an extended timeout (10 mins)
-    const [result] = await operation.promise({ timeout: 60000000 }); // 600 sec = 10 min
-
-    // Step 3: Extract and save metadata
     const annotations = result.annotationResults[0];
     fs.writeFileSync('metadata.json', JSON.stringify(annotations, null, 2));
     console.log('✅ Metadata saved to metadata.json');
@@ -151,5 +146,5 @@ Question: ${question}
 
 // Run server
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
