@@ -9,23 +9,35 @@ const { OpenAI } = require('openai');
 
 const app = express();
 const port = 3000;
-// === Decode base64 service account key to keyfile.json ===
 const keyPath = path.join(__dirname, 'keyfile.json');
 
-if (process.env.GOOGLE_KEY_BASE64) {
-  const decoded = Buffer.from(process.env.GOOGLE_KEY_BASE64, 'base64').toString('utf8');
-//  Replace literal `\n` with actual newlines
-const fixedKey = decoded.replace(/\\n/g, '\n');
-
-fs.writeFileSync(keyPath, fixedKey);} else {
+// === Decode base64 service account key ===
+if (!process.env.GOOGLE_KEY_BASE64) {
   console.error('❌ GOOGLE_KEY_BASE64 not found in .env');
   process.exit(1);
 }
 
-// === Setup Google Cloud clients ===
-const storage = new Storage({ keyFilename: keyPath });
-const videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
+try {
+  const decoded = Buffer.from(process.env.GOOGLE_KEY_BASE64, 'base64').toString('utf8');
 
+  // 🧼 Ensure valid JSON by fixing \n
+  const fixedKey = decoded.replace(/\\n/g, '\n');
+
+  // ✅ Validate JSON to catch malformed keys
+  const parsed = JSON.parse(fixedKey);
+
+  // 💾 Save to keyfile.json
+  fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
+
+  // ✅ Initialize Google Cloud clients
+  const storage = new Storage({ keyFilename: keyPath });
+  const videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
+
+  console.log('✅ Google Cloud clients initialized');
+} catch (err) {
+  console.error('❌ Failed to parse GOOGLE_KEY_BASE64:', err.message);
+  process.exit(1);
+}
 // OpenAI setup
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
