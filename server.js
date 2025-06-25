@@ -9,13 +9,20 @@ const { OpenAI } = require('openai');
 
 const app = express();
 const port = 3000;
+// === Decode base64 service account key to keyfile.json ===
+const keyPath = path.join(__dirname, 'keyfile.json');
 if (process.env.GOOGLE_KEY_BASE64) {
   const decoded = Buffer.from(process.env.GOOGLE_KEY_BASE64, 'base64').toString('utf8');
-  fs.writeFileSync(path.join(__dirname, process.env.GOOGLE_KEY_BASE64), decoded);
+  fs.writeFileSync(keyPath, decoded);
+  console.log('✅ Google service account key written to keyfile.json');
+} else {
+  console.error('❌ GOOGLE_KEY_BASE64 not found in .env');
+  process.exit(1);
 }
-// Setup Google Cloud clients
-const storage = new Storage({ keyFilename: process.env.GOOGLE_KEY_BASE64 });
-const videoClient = new VideoIntelligenceServiceClient({ keyFilename: process.env.GOOGLE_KEY_BASE64 });
+
+// === Setup Google Cloud clients ===
+const storage = new Storage({ keyFilename: keyPath });
+const videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
 
 // OpenAI setup
 const openai = new OpenAI({
