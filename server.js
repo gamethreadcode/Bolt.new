@@ -11,7 +11,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 const keyPath = path.join(__dirname, 'keyfile.json');
 
-// Declare Google Cloud clients
 let storage;
 let videoClient;
 
@@ -22,37 +21,31 @@ if (!process.env.GOOGLE_KEY_BASE64) {
 }
 
 try {
-  // 🧼 Clean up any extra quotes (Railway issue)
   const rawBase64 = process.env.GOOGLE_KEY_BASE64.trim().replace(/^"|"$/g, '');
   const decoded = Buffer.from(rawBase64, 'base64').toString('utf8');
-
-  // 📦 Parse JSON and fix \n in private key
   const parsed = JSON.parse(decoded);
   if (parsed.private_key) {
     parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
   }
-
-  // 💾 Write to keyfile.json
   fs.writeFileSync(keyPath, JSON.stringify(parsed, null, 2));
-
-  // ✅ Initialize Google Cloud clients
   storage = new Storage({ keyFilename: keyPath });
   videoClient = new VideoIntelligenceServiceClient({ keyFilename: keyPath });
-
   console.log('✅ Google Cloud clients initialized');
 } catch (err) {
   console.error('❌ Failed to decode GOOGLE_KEY_BASE64:', err.message);
   process.exit(1);
 }
 
-// OpenAI setup
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Multer setup for file upload
-const upload = multer({ dest: 'uploads/' });
-let lastUploadedFile = ''; // Stores the last uploaded filename
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB limit
+});
+
+let lastUploadedFile = '';
 
 // Upload endpoint
 app.post('/upload-video', upload.single('video'), async (req, res) => {
@@ -96,7 +89,7 @@ app.get('/analyze-video', async (req, res) => {
     });
 
     console.log('🕒 Waiting for analysis...');
-    const [result] = await operation.promise({ timeout: 600000 }); // 10 minutes
+    const [result] = await operation.promise({ timeout: 600000 });
 
     const annotations = result.annotationResults[0];
     fs.writeFileSync('metadata.json', JSON.stringify(annotations, null, 2));
@@ -122,12 +115,7 @@ app.get('/chat', async (req, res) => {
 
     const question = req.query.q || 'Summarize key plays from the video.';
 
-    const prompt = `
-Based on this video metadata:
-${labels}
-
-Question: ${question}
-    `;
+    const prompt = `\nBased on this video metadata:\n${labels}\n\nQuestion: ${question}\n    `;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -144,7 +132,6 @@ Question: ${question}
   }
 });
 
-// Run server
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
 });
