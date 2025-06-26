@@ -7,10 +7,10 @@ const cors = require('cors');
 const { Storage } = require('@google-cloud/storage');
 const { VideoIntelligenceServiceClient } = require('@google-cloud/video-intelligence');
 const { OpenAI } = require('openai');
-app.use(cors());
 const app = express();
 const port = process.env.PORT || 3000;
 const keyPath = path.join(__dirname, 'keyfile.json');
+app.use(cors());
 
 // Health Check
 app.get('/health', (req, res) => res.send('✅ Server is up'));
