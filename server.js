@@ -161,15 +161,34 @@ const metadata = JSON.parse(file.toString());
 });
 
 // === List Videos ===
+// === Get All Videos ===
 app.get('/videos', async (req, res) => {
   try {
+    const includeAnalysis = req.query.includeAnalysis === 'true';
     const snapshot = await db.collection('videos').get();
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(data);
+
+    const videos = await Promise.all(snapshot.docs.map(async (doc) => {
+      const data = doc.data();
+      const video = { id: doc.id, ...data };
+
+      if (includeAnalysis && data.analysisPath) {
+        try {
+          const [file] = await storage.bucket('basketball-demo-videos').file(data.analysisPath).download();
+          video.analysis = JSON.parse(file.toString());
+        } catch (err) {
+          console.warn(`⚠️ Failed to load analysis for video ${doc.id}: ${err.message}`);
+        }
+      }
+
+      return video;
+    }));
+
+    res.json(videos);
   } catch (err) {
     console.error('❌ Failed to fetch videos:', err.message);
-    res.status(500).send('❌ Failed to fetch');
+    res.status(500).send('❌ Failed to fetch videos');
   }
 });
+
 
 app.listen(port, () => console.log(`🚀 Running on port ${port}`));
