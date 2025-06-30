@@ -100,8 +100,18 @@ app.get('/analyze-video', async (req, res) => {
     const [result] = await operation.promise({ timeout: 600000 });
     const annotations = result.annotationResults[0];
 
+const analysisFilename = `analysis_${videoId}.json`;
+const tempPath = path.join(__dirname, analysisFilename);
+fs.writeFileSync(tempPath, JSON.stringify(annotations, null, 2));
+
+await storage.bucket('basketball-demo-videos').upload(tempPath, {
+  destination: `analysis/${analysisFilename}`
+});
+
+fs.unlinkSync(tempPath); // remove temp file
+
 await docRef.update({
-  analysis: JSON.parse(JSON.stringify(annotations)),
+  analysisPath: `analysis/${analysisFilename}`,
   status: 'analyzed',
   analyzedAt: new Date().toISOString(),
 });
@@ -124,7 +134,10 @@ app.get('/chat', async (req, res) => {
     const doc = await db.collection('videos').doc(videoId).get();
     if (!doc.exists) return res.status(404).send('❌ Video not found');
 
-    const metadata = doc.data().analysis;
+    const analysisPath = doc.data().analysisPath;
+const [file] = await storage.bucket('basketball-demo-videos').file(analysisPath).download();
+const metadata = JSON.parse(file.toString());
+
     const labels = metadata.segmentLabelAnnotations
       ?.slice(0, 5)
       .map(l => `${l.entity.description}: ${l.segments.length} segments`)
