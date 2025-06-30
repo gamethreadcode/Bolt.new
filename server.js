@@ -100,11 +100,13 @@ app.get('/analyze-video', async (req, res) => {
     const [result] = await operation.promise({ timeout: 600000 });
     const annotations = result.annotationResults[0];
 
-    await docRef.update({
-      analysis: annotations,
-      status: 'analyzed',
-      analyzedAt: new Date().toISOString(),
-    });
+await docRef.update({
+  analysis: JSON.parse(JSON.stringify(annotations)),
+  status: 'analyzed',
+  analyzedAt: new Date().toISOString(),
+});
+    console.log(`✅ Analysis complete for video ${videoId}`);
+
 
     res.send('✅ Analysis complete');
   } catch (err) {
