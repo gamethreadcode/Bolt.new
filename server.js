@@ -98,36 +98,55 @@ app.get('/analyze-video', async (req, res) => {
     });
 
     const [result] = await operation.promise({ timeout: 600000 });
-//     const annotations = result.annotationResults[0];
+    const annotations = result.annotationResults[0];
 
-// const analysisFilename = `analysis_${videoId}.json`;
-// const tempPath = path.join(__dirname, analysisFilename);
-// fs.writeFileSync(tempPath, JSON.stringify(annotations, null, 2));
-const parsed = parseAnalysis(result.annotationResults[0]);
-fs.writeFileSync(tempPath, JSON.stringify(parsed, null, 2));
-await storage.bucket('basketball-demo-videos').upload(tempPath, {
-  destination: `analysis/${analysisFilename}`
-});
-await docRef.update({
-  analysisPath: `analysis/${analysisFilename}`,
-  status: 'analyzed',
-  analyzedAt: new Date().toISOString(),
-});
+    const analysisFilename = `analysis_${videoId}.json`;
+    const tempPath = path.join(__dirname, analysisFilename);
 
-await storage.bucket('basketball-demo-videos').upload(tempPath, {
-  destination: `analysis/${analysisFilename}`
-});
+    // 🔍 Generate structured summary with OpenAI
+    const labels = annotations.segmentLabelAnnotations?.slice(0, 10).map(label => {
+      return `${label.entity.description}: ${label.segments?.length || 0} segments`;
+    }).join('\n') || 'No labels found';
 
-fs.unlinkSync(tempPath); // remove temp file
+    const prompt = `You are a basketball analyst. Parse the following video metadata into this structured JSON:
+{
+  "shotZones": { "rim": "", "shortMid": "", "longMid": "", "corners": "", "aboveBreak": "" },
+  "playStyle": { "passVsShoot": "", "driveVsPullUp": "" },
+  "defense": { "avgDefDistance": "", "blowByRate": "", "helpGapFrequency": "" },
+  "rimTendencies": { "finishRate": "", "kickOutRate": "", "vsTallerDefenders": "", "foulDrawRate": "" },
+  "hotSpots": [],
+  "handDominance": { "left": "", "right": "" }
+}
 
-await docRef.update({
-  analysisPath: `analysis/${analysisFilename}`,
-  status: 'analyzed',
-  analyzedAt: new Date().toISOString(),
-});
+Metadata:
+${labels}`;
+
+    const summaryResponse = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: 'You are a basketball analyst AI.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    const parsed = JSON.parse(summaryResponse.choices[0].message.content);
+    fs.writeFileSync(tempPath, JSON.stringify(parsed, null, 2));
+
+    await storage.bucket('basketball-demo-videos').upload(tempPath, {
+      destination: `analysis/${analysisFilename}`
+    });
+
+    fs.unlinkSync(tempPath);
+
+    await docRef.update({
+      analysisPath: `analysis/${analysisFilename}`,
+      analysisSummary: parsed,
+      status: 'analyzed',
+      analyzedAt: new Date().toISOString(),
+    });
+
     console.log(`✅ Analysis complete for video ${videoId}`);
-
-
     res.send('✅ Analysis complete');
   } catch (err) {
     console.error('❌ Analysis failed:', err);
@@ -145,11 +164,10 @@ app.get('/chat', async (req, res) => {
     if (!doc.exists) return res.status(404).send('❌ Video not found');
 
     const analysisPath = doc.data().analysisPath;
-const [file] = await storage.bucket('basketball-demo-videos').file(analysisPath).download();
-const metadata = JSON.parse(file.toString());
+    const [file] = await storage.bucket('basketball-demo-videos').file(analysisPath).download();
+    const metadata = JSON.parse(file.toString());
 
-    const labels = metadata.segmentLabelAnnotations
-      ?.slice(0, 5)
+    const labels = metadata.segmentLabelAnnotations?.slice(0, 5)
       .map(l => `${l.entity.description}: ${l.segments.length} segments`)
       .join('\n');
 
@@ -170,7 +188,6 @@ const metadata = JSON.parse(file.toString());
   }
 });
 
-// === List Videos ===
 // === Get All Videos ===
 app.get('/videos', async (req, res) => {
   try {
@@ -181,13 +198,8 @@ app.get('/videos', async (req, res) => {
       const data = doc.data();
       const video = { id: doc.id, ...data };
 
-      if (includeAnalysis && data.analysisPath) {
-        try {
-          const [file] = await storage.bucket('basketball-demo-videos').file(data.analysisPath).download();
-          video.analysis = JSON.parse(file.toString());
-        } catch (err) {
-          console.warn(`⚠️ Failed to load analysis for video ${doc.id}: ${err.message}`);
-        }
+      if (includeAnalysis && data.analysisSummary) {
+        video.analysis = data.analysisSummary;
       }
 
       return video;
@@ -199,6 +211,5 @@ app.get('/videos', async (req, res) => {
     res.status(500).send('❌ Failed to fetch videos');
   }
 });
-
 
 app.listen(port, () => console.log(`🚀 Running on port ${port}`));
