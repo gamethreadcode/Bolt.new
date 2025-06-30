@@ -98,11 +98,21 @@ app.get('/analyze-video', async (req, res) => {
     });
 
     const [result] = await operation.promise({ timeout: 600000 });
-    const annotations = result.annotationResults[0];
+//     const annotations = result.annotationResults[0];
 
-const analysisFilename = `analysis_${videoId}.json`;
-const tempPath = path.join(__dirname, analysisFilename);
-fs.writeFileSync(tempPath, JSON.stringify(annotations, null, 2));
+// const analysisFilename = `analysis_${videoId}.json`;
+// const tempPath = path.join(__dirname, analysisFilename);
+// fs.writeFileSync(tempPath, JSON.stringify(annotations, null, 2));
+const parsed = parseAnalysis(result.annotationResults[0]);
+fs.writeFileSync(tempPath, JSON.stringify(parsed, null, 2));
+await storage.bucket('basketball-demo-videos').upload(tempPath, {
+  destination: `analysis/${analysisFilename}`
+});
+await docRef.update({
+  analysisPath: `analysis/${analysisFilename}`,
+  status: 'analyzed',
+  analyzedAt: new Date().toISOString(),
+});
 
 await storage.bucket('basketball-demo-videos').upload(tempPath, {
   destination: `analysis/${analysisFilename}`
