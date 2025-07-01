@@ -103,23 +103,11 @@ app.get('/analyze-video', async (req, res) => {
     const analysisFilename = `analysis_${videoId}.json`;
     const tempPath = path.join(__dirname, analysisFilename);
 
-    // 🔍 Generate structured summary with OpenAI
     const labels = annotations.segmentLabelAnnotations?.slice(0, 10).map(label => {
       return `${label.entity.description}: ${label.segments?.length || 0} segments`;
     }).join('\n') || 'No labels found';
 
-    const prompt = `You are a basketball analyst. Parse the following video metadata into this structured JSON:
-{
-  "shotZones": { "rim": "", "shortMid": "", "longMid": "", "corners": "", "aboveBreak": "" },
-  "playStyle": { "passVsShoot": "", "driveVsPullUp": "" },
-  "defense": { "avgDefDistance": "", "blowByRate": "", "helpGapFrequency": "" },
-  "rimTendencies": { "finishRate": "", "kickOutRate": "", "vsTallerDefenders": "", "foulDrawRate": "" },
-  "hotSpots": [],
-  "handDominance": { "left": "", "right": "" }
-}
-
-Metadata:
-${labels}`;
+    const prompt = `You are a basketball analyst. Based on this video metadata, generate a JSON summary with as much estimation as possible. If details are missing, leave values as \"N/A\" or estimated defaults. Do not explain — just return the JSON.\n\nMetadata:\n${labels}\n\nFormat:\n{\n  \"shotZones\": { \"rim\": \"\", \"shortMid\": \"\", \"longMid\": \"\", \"corners\": \"\", \"aboveBreak\": \"\" },\n  \"playStyle\": { \"passVsShoot\": \"\", \"driveVsPullUp\": \"\" },\n  \"defense\": { \"avgDefDistance\": \"\", \"blowByRate\": \"\", \"helpGapFrequency\": \"\" },\n  \"rimTendencies\": { \"finishRate\": \"\", \"kickOutRate\": \"\", \"vsTallerDefenders\": \"\", \"foulDrawRate\": \"\" },\n  \"hotSpots\": [],\n  \"handDominance\": { \"left\": \"\", \"right\": \"\" }\n}`;
 
     const summaryResponse = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -130,23 +118,22 @@ ${labels}`;
       temperature: 0.7
     });
 
-    const aiResponse = summaryResponse.choices[0].message.content;
-console.log("🧠 Raw AI response:", aiResponse);
+    const content = summaryResponse.choices[0].message.content.trim();
+    const jsonStart = content.indexOf('{');
+    const jsonEnd = content.lastIndexOf('}');
+    let parsed;
 
-let parsed;
-try {
-  parsed = JSON.parse(aiResponse);
-} catch (err) {
-  console.error("❌ Failed to parse AI JSON:", err.message);
-  return res.status(500).send(`❌ OpenAI response was not valid JSON:\n${aiResponse}`);
-}
+    try {
+      parsed = JSON.parse(content.slice(jsonStart, jsonEnd + 1));
+    } catch (e) {
+      console.error('❌ OpenAI response was not valid JSON:\n' + content);
+      return res.status(500).send('❌ OpenAI returned invalid JSON. Check logs for details.');
+    }
 
     fs.writeFileSync(tempPath, JSON.stringify(parsed, null, 2));
-
     await storage.bucket('basketball-demo-videos').upload(tempPath, {
       destination: `analysis/${analysisFilename}`
     });
-
     fs.unlinkSync(tempPath);
 
     await docRef.update({
@@ -221,6 +208,7 @@ app.get('/videos', async (req, res) => {
     res.status(500).send('❌ Failed to fetch videos');
   }
 });
+
 // === Debug: Get Raw Analysis Summary for a Video ===
 app.get('/debug-analysis-summary', async (req, res) => {
   const { videoId } = req.query;
@@ -239,4 +227,5 @@ app.get('/debug-analysis-summary', async (req, res) => {
     res.status(500).send('❌ Error retrieving analysisSummary');
   }
 });
+
 app.listen(port, () => console.log(`🚀 Running on port ${port}`));
