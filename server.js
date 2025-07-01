@@ -130,7 +130,17 @@ ${labels}`;
       temperature: 0.7
     });
 
-    const parsed = JSON.parse(summaryResponse.choices[0].message.content);
+    const aiResponse = summaryResponse.choices[0].message.content;
+console.log("🧠 Raw AI response:", aiResponse);
+
+let parsed;
+try {
+  parsed = JSON.parse(aiResponse);
+} catch (err) {
+  console.error("❌ Failed to parse AI JSON:", err.message);
+  return res.status(500).send(`❌ OpenAI response was not valid JSON:\n${aiResponse}`);
+}
+
     fs.writeFileSync(tempPath, JSON.stringify(parsed, null, 2));
 
     await storage.bucket('basketball-demo-videos').upload(tempPath, {
