@@ -213,8 +213,34 @@ app.get('/chat', async (req, res) => {
       .map(l => `${l.entity.description}: ${l.segments.length} segments`)
       .join('\n');
 
-    const prompt = `Video Metadata:\n${labels}\n\nQuestion: ${q || 'Summarize the video'}`;
+    const prompt = `You are a basketball analyst. Parse the following video metadata into two JSON blocks:
 
+1. Individual Player Analysis:
+{
+  "shotZones": { "rim": "", "shortMid": "", "longMid": "", "corners": "", "aboveBreak": "" },
+  "playStyle": { "passVsShoot": "", "driveVsPullUp": "" },
+  "defense": { "avgDefDistance": "", "blowByRate": "", "helpGapFrequency": "" },
+  "rimTendencies": { "finishRate": "", "kickOutRate": "", "vsTallerDefenders": "", "foulDrawRate": "" },
+  "hotSpots": [],
+  "handDominance": { "left": "", "right": "" }
+}
+
+2. Team Analysis:
+{
+  "teamStats": {
+    "fastBreakPoints": "",
+    "secondChancePoints": "",
+    "pointsInPaint": "",
+    "benchPoints": "",
+    "totalAssists": "",
+    "rebounds": "",
+    "steals": "",
+    "turnovers": "",
+    "blocks": ""
+  }
+}
+
+Metadata:\n${labels}`;
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
