@@ -107,8 +107,53 @@ app.get('/analyze-video', async (req, res) => {
       return `${label.entity.description}: ${label.segments?.length || 0} segments`;
     }).join('\n') || 'No labels found';
 
-    const prompt = `You are a basketball analyst. Based on this video metadata, generate a JSON summary with as much estimation as possible. If details are missing, leave values as \"N/A\" or estimated defaults. Do not explain — just return the JSON.\n\nMetadata:\n${labels}\n\nFormat:\n{\n  \"shotZones\": { \"rim\": \"\", \"shortMid\": \"\", \"longMid\": \"\", \"corners\": \"\", \"aboveBreak\": \"\" },\n  \"playStyle\": { \"passVsShoot\": \"\", \"driveVsPullUp\": \"\" },\n  \"defense\": { \"avgDefDistance\": \"\", \"blowByRate\": \"\", \"helpGapFrequency\": \"\" },\n  \"rimTendencies\": { \"finishRate\": \"\", \"kickOutRate\": \"\", \"vsTallerDefenders\": \"\", \"foulDrawRate\": \"\" },\n  \"hotSpots\": [],\n  \"handDominance\": { \"left\": \"\", \"right\": \"\" }\n}`;
+const prompt = `
+You are an expert basketball analyst AI.
 
+You are given metadata from a specific basketball video. Use this information to generate a **realistic, varied, and unique structured analysis summary** for this video. Your goal is to make each summary reflect the type of game, style, and context implied by the metadata.
+
+Output only valid JSON in this exact structure:
+
+{
+  "shotZones": {
+    "rim": "percentage",
+    "shortMid": "percentage",
+    "longMid": "percentage",
+    "corners": "percentage",
+    "aboveBreak": "percentage"
+  },
+  "playStyle": {
+    "passVsShoot": "x% pass / y% shoot",
+    "driveVsPullUp": "x% drive / y% pull-up"
+  },
+  "defense": {
+    "avgDefDistance": "distance in feet",
+    "blowByRate": "percentage",
+    "helpGapFrequency": "percentage"
+  },
+  "rimTendencies": {
+    "finishRate": "percentage",
+    "kickOutRate": "percentage",
+    "vsTallerDefenders": "percentage",
+    "foulDrawRate": "percentage"
+  },
+  "hotSpots": ["zone1", "zone2", ...],
+  "handDominance": {
+    "left": "percentage",
+    "right": "percentage"
+  }
+}
+
+IMPORTANT:
+- Base your values on variations in metadata (like mentions of “drive”, “pull-up”, “court”, “player”, etc.).
+- NEVER use the same percentages every time. Each output should feel like a new match.
+- If metadata is vague, invent reasonable but different numbers per request.
+- Do NOT include any explanation or notes. Just the pure JSON.
+
+Metadata:
+${labels}
+`;
+    console.log(`🔍 Analyzing video ${videoId}...`);
     const summaryResponse = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
