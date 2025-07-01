@@ -211,5 +211,22 @@ app.get('/videos', async (req, res) => {
     res.status(500).send('❌ Failed to fetch videos');
   }
 });
+// === Debug: Get Raw Analysis Summary for a Video ===
+app.get('/debug-analysis-summary', async (req, res) => {
+  const { videoId } = req.query;
+  if (!videoId) return res.status(400).send('❌ videoId is required');
 
+  try {
+    const doc = await db.collection('videos').doc(videoId).get();
+    if (!doc.exists) return res.status(404).send('❌ Video not found');
+
+    const summary = doc.data().analysisSummary;
+    if (!summary) return res.status(404).send('❌ No analysisSummary found for this video');
+
+    res.json(summary);
+  } catch (err) {
+    console.error('❌ Failed to fetch analysisSummary:', err.message);
+    res.status(500).send('❌ Error retrieving analysisSummary');
+  }
+});
 app.listen(port, () => console.log(`🚀 Running on port ${port}`));
